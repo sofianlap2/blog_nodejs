@@ -25,6 +25,7 @@ exports.getPosts = asyncErrorHandler(
     
         res.status(201).json({
             status: "success",
+            user: req.user,
             data: posts
         })
     } 

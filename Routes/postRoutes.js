@@ -3,12 +3,13 @@ const express = require("express");
 const router = express.Router();
 
 const postsController = require('../Controllers/postsController')
+const authController = require('../Controllers/authController')
 
 // route name == posts
 // Route for get all posts  ==> GET
 // Route for create new post  ==> POST
 router.route('/')
-.get(postsController.getPosts)
+.get(authController.protect, postsController.getPosts)
 .post(postsController.createPosts)
 
 // route name == posts/id
