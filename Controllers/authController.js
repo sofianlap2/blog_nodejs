@@ -1,7 +1,10 @@
 const UserModel = require('../Models/userModel');
 const CustomError = require('../Utils/CustomError');
 const asyncErrorHandler = require('../Utils/asyncErrorHandler');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const sendMail = require('../Utils/emailSend')
+const crypto = require('crypto');
+const { error } = require('console');
 
 const signToken = (payloadToken) => {
     return jwt.sign(payloadToken, process.env.SECRET_KEY, {
@@ -75,5 +78,87 @@ exports.protect = asyncErrorHandler(
         req.user = user
 
         next()
+    }
+)
+
+exports.restrict = (role) => {
+    return (req, res, next) => {
+        if(req.user.role !== role) {
+            const error = new CustomError('This user have no permission for this action', 403)
+            return next(error)
+        }
+        next()
+    }
+}
+
+exports.forgotPassword = asyncErrorHandler(
+    async (req,res,next) => {
+
+        const user = await UserModel.findOne({ email: req.body.email });
+
+        if(!user) {
+            const error = new CustomError('There is no user with this email', 400);
+            return next(error)
+        }
+
+        const resetPassword = await user.createPasswordToken();
+
+        await user.save({ validateBeforeSave: false });
+
+        const resetUrl = process.env.FRONT_URL + '/resetpassword/' + resetPassword
+
+        try {
+            await sendMail(user.email, `<b>Hello mr ${user.name} </b>
+            <br> 
+            <a href="${resetUrl}">Please click on this link to reset your password</a>`)
+
+            res.status(200).json({
+                status: 'success',
+                message: 'Email sent'
+            })
+        } catch (error) {
+            user.passwordResetToken = undefined;
+            user.passwordResetTokenExpiresDate = undefined;
+
+            await user.save({ validateBeforeSave: false });
+
+            const errorMail = new CustomError('Error on sending reset password email', 500)
+            return next(errorMail)
+        }
+    }
+)
+
+exports.resetPassword = asyncErrorHandler(
+    async (req,res,next) => {
+        const resetToken = req.params.token;
+
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        const dateNow = new Date(Date.now() + 1 * 60 * 60* 1000)
+        const user = await UserModel.findOne({ passwordResetToken: hashedToken, passwordResetTokenExpiresDate: { $gt: dateNow } })
+
+        if(!user) {
+            const error = new CustomError('no user found on database', 400)
+            return next(error)
+        }
+
+        user.password = req.body.password;
+        user.confirmPassword = req.body.confirmPassword;
+        user.passwordResetToken = undefined
+        user.passwordResetTokenExpiresDate = undefined
+
+        try {
+            await user.save();
+
+            const token = signToken({id: user._id}, process.env.SECRET_KEY);
+
+            res.status(200).json({
+                status: 'success',
+                token
+            })
+        } catch (error) {
+            const errorSaving = new CustomError(error.message, 400)
+            return next(errorSaving)
+        }
     }
 )

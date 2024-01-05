@@ -10,16 +10,16 @@ const authController = require('../Controllers/authController')
 // Route for create new post  ==> POST
 router.route('/')
 .get(authController.protect, postsController.getPosts)
-.post(postsController.createPosts)
+.post(authController.protect, postsController.createPosts)
 
 // route name == posts/id
 // Route for get one post  ==> GET
 // Route for delete on post  ==> DELETE
 // Route for update on post  ==> PUT
 router.route('/post/:id')
-.get(postsController.getPost)
-.put(postsController.updatePost)
-.delete(postsController.deletePost)
+.get(authController.protect, postsController.getPost)
+.put(authController.protect, postsController.updatePost)
+.delete(authController.protect, authController.restrict('admin'), postsController.deletePost)
 
 
 

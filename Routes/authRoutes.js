@@ -12,4 +12,11 @@ router.route('/signup').post(authController.signup)
 // Route for create a user  ==> POST
 router.route('/login').post(authController.login)
 
+// route name == forgotPassword
+// Route for create a new password  ==> POST
+router.route('/forgotPassword').post(authController.forgotPassword)
+
+// route name == resetPassword
+// Route for create a new password  ==> POST
+router.route('/resetPassword/:token').patch(authController.resetPassword)
 module.exports = router

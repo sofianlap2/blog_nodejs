@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto')
 
 const {Schema} = mongoose;
 
@@ -30,7 +31,17 @@ const userSchema = new Schema({
             },
             message: "Please enter a confirm password that matches your password"
         }
-    }
+    },
+    role: {
+        type: String,
+        enum: {
+            values: ['user', 'admin'],
+            message: "This role is not accepted must be user or admin"
+        },
+        default: 'user'
+    },
+    passwordResetToken: String,
+    passwordResetTokenExpiresDate: Date
 })
 
 // cryptage du mot de passe
@@ -47,6 +58,21 @@ userSchema.pre('save', async function(next) {
 //compare password in db
 userSchema.methods.comparePasswordFromDB = async function(password, passwordDB) {
     return await bcrypt.compare(password, passwordDB)
+}
+
+//compare password in db
+userSchema.methods.comparePasswordFromDB = async function(password, passwordDB) {
+    return await bcrypt.compare(password, passwordDB)
+}
+
+//create token for reset password
+userSchema.methods.createPasswordToken = async function() {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    this.passwordResetTokenExpiresDate = Date.now() + 1 * 70 * 60* 1000 ;
+
+    return resetToken
 }
 
 const userModel = mongoose.model('User', userSchema);
